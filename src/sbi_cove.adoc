@@ -1156,11 +1156,12 @@ are deterministic. The VM must not use registers associated with RISC-V
 extensions, e.g., vector, floating point, before promotion, because these
 registers will be zeroized during the promotion.
 
-The TSM recreates TVM vCPUs in confidential memory. All TVM vCPUs are in the
-reset state, except the TVM Boot vCPU, which is the state of the reflected VM's
-vCPU. This VM's vCPU state is reflected using NACL shared memory. The TSM
-recreates in confidential memory the reflected VM's data and the VM's page
-tables, following the page table configuration defined in HGATP.
+The TVM vCPUs are recreated in confidential memory. The TSM reads the number of
+vCPUs from the FDT and sets all TVM vCPUs but the TVM's boot vCPU to reset state.
+The TVM's boot vCPU state is reflected in NACL shared memory and its program
+counter value in the `entry_sepc` call's argument. The TSM recreates in
+confidential memory the reflected VM's data and the VM's page tables, following
+the page table configuration defined in HGATP.
 
 Once the TVM's image is completed, the TSM calculates the TVM measurement.
 If `tap_addr` is defined, the TSM uses this TVM measurement to authenticate and
