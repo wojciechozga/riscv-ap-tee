@@ -914,9 +914,9 @@ authorized entity (TVM creator).
 [NOTE]
 ====
 The TAP can be provided to the TSM at the time of the TVM creation or runtime.
-In the former case, the TSM can enforce that TVM is allowed to execute and
-release boot key. In the latter, it can provide continuous access to secrets as
-part of a licensing model.
+In the former case, the TSM can enforce that a TVM is allowed to execute and
+might provide it with a boot key. In the latter, it can provide the TVM with
+continuous access to secrets as part of a licensing model.
 ====
 
 Local attestation utilizes one or more of the following properties:
@@ -950,7 +950,7 @@ signature is not valid, the TSM rejects to promote the VM to TVM.
 
 [id=tap_format]
 [caption="Figure {counter:image}"]
-[title= "Format of the TVM Attestation Payload (TAP)"]
+[title= ": Format of the TVM Attestation Payload (TAP)"]
 image::tap_format.png[align=center]
 
 ==== TVM Attestation Payload (TAP)
@@ -958,10 +958,11 @@ The TAP carries information that allows the TSM to authorize the TVM's execution
 on the platform and provision the TVM with TVM-specific secrets.
 <<tap_format>> shows the TAP format that consists of five sections: header, lockboxes,
 measurements, attributes, and secrets. The last three sections are confidentiality
-and integrity protected using a symmetric key encrypted inside lockboxes.
+and integrity protected using a symmetric encryption key, in which a symmetric
+key is encrypted inside lockboxes.
 
 [caption="Figure {counter:image}: ", reftext="Figure {image}"]
-[title= "TAP"]
+[title= "TAP Format in CDDL"]
 [source,cddl]
 ----
 
@@ -979,15 +980,15 @@ tap = {
 ----
 
 ===== Header
-The `header` section carries information about the size, version, and encoding
+The header section carries information about the size, version, and encoding
 of the TAP that are used by a parser to interpret the binary representation of
 the TAP. The version field allows future extensions of the TAP format while
 preserving backward compatibility. The `encoding` field enables use of
-implementation-specific encoding format, such as Concise Binary Object
-Representation (CBOR) or JavaScript Object Notation (JSON).
+implementation-specific encoding format, such as binary, concise binary object
+representation (CBOR), or JavaScript object notation (JSON).
 
 [caption="Figure {counter:image}: ", reftext="Figure {image}"]
-[title= "TAP Header"]
+[title= "TAP Header Format in CDDL"]
 [source,cddl]
 ----
 tap-header-encoding = (
@@ -1004,7 +1005,7 @@ tap-header = {
 ----
 
 ===== Lockboxes
-The `lockboxes` section supports use of the same TAP across different platforms
+The lockboxes section supports use of the same TAP across different platforms
 and enables use of different cryptographic primitives. Each lockbox contains
 the TAP symmetric key (TSK) that is encrypted using an identity key of one of
 the target platforms. Only the TSM running on the target platform within the
@@ -1017,7 +1018,7 @@ target platform's identity key and stores them in form of a list in the
 `lockboxes` section.
 
 [caption="Figure {counter:image}: ", reftext="Figure {image}"]
-[title= "TAP Lockboxes"]
+[title= "TAP Lockboxes Format in CDDL"]
 [source,cddl]
 ----
 tap-lockbox-name = bstr
@@ -1034,14 +1035,14 @@ tap-lockboxes = [
 ----
 
 ===== Measurements
-The `measurements` sections contains the TVM reference integrity measurements.
+The measurements sections contains the TVM reference integrity measurements.
 In order to expose secrets to a TVM, the TSM must verify that the TVM's
 integrity matches all defined reference measurements for a TSM-selected
 algorithm. If the `attributes` section is not empty, then the TSM must
 additionally verify all attributes before releasing the key.
 
 [caption="Figure {counter:image}: ", reftext="Figure {image}"]
-[title= "TAP Measurements"]
+[title= "TAP Measurements Format in CDDL"]
 [source,cddl]
 ----
 tap-measurement-pcr-id = int
@@ -1062,18 +1063,26 @@ tap-measurements = [
 ----
 
 ===== Attributes
-The `attributes` section contains a set of rules that define the conditions
-under which a TVM can execute and access the secrets. The TSM must not expose
-secrets to a TVM, if any condition fails.
+The attributes section contains a set of rules that define the conditions
+under which a TVM can execute and access the secrets. The TSM implementation
+might not support all types of attributes. It must not expose secrets to a TVM,
+if any condition fails. If there is an attribute that the TSM does not support,
+then the TSM must consider that the condition defined by the attribut failed
+verification.
 
 [caption="Figure {counter:image}: ", reftext="Figure {image}"]
-[title= "TAP Attributes"]
+[title= "TAP Attributes Format in CDDL"]
 [source,cddl]
 ----
 tap-attribute-key = int {
-   0 => hardware_serial_number,
-   1 => firmware_build_time,
-   2 => license_expiration,
+   0 => hardware_serial_number,      ; A unique number identifying hardware
+   1 => firmware_build_time,         ; Time at which the firmware was built
+   2 => license_expiration,          ; Time at which the license expires
+   3 => bios_version,                ; BIOS/UEFI version string
+   4 => secure_boot_enabled,         ; Boolean (1=true, 0=false)
+   5 => tcb_version,                 ; Trusted Computing Base version
+   6 => enclave_debug_allowed,       ; Boolean, e.g., SGX/TDX
+   7 => max_allowed_uptime           ; Maximum platform uptime in seconds
 }
 
 tap-attribute-operand = int {
@@ -1082,7 +1091,7 @@ tap-attribute-operand = int {
    2 => gt,
    3 => lt,
    4 => ge,
-   5 => le,
+   5 => le
 }
 
 tap-attribute-value = bstr
@@ -1098,7 +1107,7 @@ tap-attributes = {
 ----
 
 ===== Secrets
-The `secrets` section contains a map of secrets where a secret could be, for
+The secrets section contains a map of secrets where a secret could be, for
 example, a cryptographic key or an SSH key. Each secret is identified by a
 unique number. The TVM can retrieve secrets from the TSM using the
 `sbi_covg_retrieve_secret()` ABI.
@@ -1112,7 +1121,7 @@ disk encryption secret that the TVM firmware could retrieve from TSM.
 
 ====
 [caption="Figure {counter:image}: ", reftext="Figure {image}"]
-[title= "TAP Secrets"]
+[title= "TAP Secrets Format in CDDL"]
 [source,cddl]
 ----
 tap-secret-value = bstr
