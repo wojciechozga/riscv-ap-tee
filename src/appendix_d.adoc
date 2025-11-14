@@ -80,57 +80,6 @@ In such cases, the OS/VMM can modify the FDT to mark selected pages as
 zero pages, and the TSM is expected to clear these pages during promotion.
 ====
 
-=== Local attestation
-Embedded systems might operate without access to a network, which prevents use
-of remote attestation. For this reason, this deployment model also supports
-local attestation, in which the TSM attests to the integrity of the TVM image
-during its creation and allows its execution only when it contains a specfic
-TAP (TVM attestation payload). This payload carries a cryptographic proof
-issued with the expected attestation key specific to the TSM integrity and
-platform configuration.
-
-A pointer to the TAP is passed as an argument in the call that promotes a VM to
-a TVM. If it is zero, then remote attestation is used; otherwise, local
-attestation is used. The TSM must verify that the TVM's attestation measurements
-(i.e., integrity measurements, configuration of the hardware platform) match the
-values specified by the TVM creator in the TAP.
-
-Local attestation utilizes one or more of the following properties:
-
-. The TSM must be able to verify that a TVM creator authorized the TVM to run
-on the platform.
-. The TSM enforces that only TVMs created by a trusted entity runs on the
-hardware.
-
-==== Linking TVM to the platform
-A CoVE-enabled platform must consist of a mechanism to identify the platform,
-for example via cryptographic keys exposed by an implementation-specific
-mechanism, such as a hardware root of trust. The creator of a TVM must then be
-able to link the identity key with the hardware and use it to encode the TAP.
-Only the TSM running on that platform must have access to the key that permits
-it to decode the TAP. Access to such key should be linked to the integrity of
-the TCB, i.e., the TSM and other M-mode firmware.
-After successful local attestation, the TVM should be able to request the TSM to
-retrieve secrets encoded in the TAP using an ABI call
-(`sbi_covg_retrieve_secret()`).
-
-[NOTE]
-====
-A common deployment pattern is to protect the confidentiality of the TVM image
-at rest by encrypting the VM's disk with a key that the TVM obtains during boot
-following successful attestation.
-====
-
-==== TVM Authorization
-A CoVE-enabled platform might restrict what TVM are allowed to run. There should
-be then an implementation-specific mechanism to provide the TSM with a list of
-public keys of those authorized to sign TVM images for execution on the
-platform. The creator of a TVM must sign the TAP associated with the TVM with
-the corresponding private key. During local attestation, the TSM verifies the
-signature inside the TAP using the list of authorized public keys to decide if
-the TVM is authorized to execute. If the signature is not valid, the TSM rejects
-to promote the VM to TVM.
-
 === Further recommendations
 Embedded systems with real-time requirements must guarantee a fixed upper bound
 on execution time. This necessitates determining the maximum number of
