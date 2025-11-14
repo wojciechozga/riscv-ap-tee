@@ -984,13 +984,15 @@ The header section carries information about the size, version, and encoding
 of the TAP that are used by a parser to interpret the binary representation of
 the TAP. The version field allows future extensions of the TAP format while
 preserving backward compatibility. The `encoding` field enables use of
-implementation-specific encoding format, such as binary, concise binary object
+implementation-specific encoding format, for example binary, concise binary object
 representation (CBOR), or JavaScript object notation (JSON).
 
 [caption="Figure {counter:image}: ", reftext="Figure {image}"]
 [title= "TAP Header Format in CDDL"]
 [source,cddl]
 ----
+tap-header-version = 0 / int .ge 0 .le 65535
+
 tap-header-encoding = (
    binary: 0
    cbor: 1,
@@ -999,7 +1001,7 @@ tap-header-encoding = (
 tap-header = {
     magic: h'ACE0ACE0',       ; 4-byte constant
     tap-header-size: int .ge 8 .le 65535,
-    tap-header-version: int .ge 0 .le 65535,
+    tap-header-version: tap-header-version,
     tap-header-encoding: tap-header-encoding
 }
 ----
