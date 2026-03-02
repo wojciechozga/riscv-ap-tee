@@ -919,34 +919,65 @@ might provide it with a boot key. In the latter, it can provide the TVM with
 continuous access to secrets as part of a licensing model.
 ====
 
+Local attestation introduces two components, a local verifier and a local secret
+broker. The local verifier attests to the TVM's integrity and authorizes the TVM's
+execution. The local secret broker provides a TVM with secrets. Both components
+use a TAP that contains the specification of reference integrity measurements,
+secrets, and conditions under which a TVM can execute and access secrets.
+
+[NOTE]
+====
+The local verifier and secret broker roles are defined as distinct logical
+components to enable a broader range of deployment models and use cases.
+For example, an implementation may realize the secret broker within a TVM,
+a platform RoT, or an external centralized computing node used by many devices.
+In other implementations, a TSM may consolidate both the local verifier and secret
+broker roles within a single component.
+====
+
+==== Properties
+
 Local attestation utilizes one or more of the following properties:
 
-. TVM–Platform Binding: The TSM verifies that a TVM creator authorized the TVM
-to run on the platform.
-. TVM Authorization: The TSM enforces that only TVMs created by a trusted entity
-(e.g., a TVM creator) runs on the hardware.
+. TVM–Platform Binding: The system verifies that a TVM is authorized to run on
+the platform.
+. TVM Authorization: The system enforces that only TVMs created by a trusted
+entity run on the platform.
+. Policy-enforced Access to Secrets: The system enforces that a secret is accessed
+only when a TVM and platform are in the expected state.
 
-A CoVE-enabled platform supporting the TVM-platform binding must consist of a
+A CoVE-enabled platform that supports the TVM-platform binding must consist of a
 mechanism to identify the platform, for example via cryptographic keys exposed
-by an implementation-specific mechanism, such as a hardware root of trust with
+by an implementation-specific mechanism, such as a hardware RoT with
 support for CoVE DICE.
 The creator of a TVM must then be able to link the identity key with the
 hardware and use it to encode the TAP.
-Only the TSM running on that platform must have access to the key that permits
-it to decode the TAP. Access to such key should be linked to the integrity of
-all TCB elements, such as the TSM and other M-mode firmware.
-After successful local attestation, the TVM should be able to request the TSM to
-retrieve secrets encoded in the TAP using an ABI call
-(`sbi_covg_retrieve_secret()`).
+Only the local verifier and local secret broker running on that platform must
+have access to the key that permits them to decode the TAP.
+Access to such key should be linked to the integrity of all TCB elements, such
+as the TSM and other M-mode firmware.
 
-A CoVE-enabled platform supporting the TVM authorization must restrict what
-TVMs are allowed to run. There must be an implementation-specific mechanism to
-provide the TSM with a list of public keys of those authorized to sign TVM
-images for execution on the platform. The creator of a TVM must sign the TAP
-associated with the TVM with the corresponding private key. During local
-attestation, the TSM verifies the signature inside the TAP using the list of
-authorized public keys to decide if the TVM is authorized to execute. If the
-signature is not valid, the TSM rejects to promote the VM to TVM.
+During the TVM creation, the TSM should request the local verifier to authorize
+a TVM execution based on the conditions specified in a TAP. A TVM, which is
+executing, should be then able to retrieve from the local secret broker secrets
+encoded in the TAP using an implementation-specific interface.
+
+A CoVE-enabled platform that supports the TVM authorization must implement the
+local verifier who restrict what TVMs are allowed to run. There must be an
+implementation-specific mechanism to provide the local verifier with a list of
+public keys of those authorized to sign TVM images for execution on the platform.
+The creator of a TVM must sign the TAP associated with the TVM with the
+corresponding private key. During the TVM creation, the TSM requests the local
+verifier to check if the TVM is authorized to execute based on the signature
+inside the TAP and the list of authorized public keys. If the signature cannot
+be validated, the local verifier must reject authorization of a TVM execution
+and the TSM must reject its creation.
+
+A CoVE-enabled platform that supports policy-enforced access to secrets must
+implement a secret broker that exposes an implementation-specific secret
+retrieval interface to TVMs. The secret broker must authorize every access to a
+secret and checks that it is granted only when the platform and the TVM satisfy
+all conditions defined in TAP.
 
 [id=tap_format]
 [caption="Figure {counter:image}"]
@@ -954,12 +985,16 @@ signature is not valid, the TSM rejects to promote the VM to TVM.
 image::tap_format.png[align=center]
 
 ==== TVM Attestation Payload (TAP)
-The TAP carries information that allows the TSM to authorize the TVM's execution
-on the platform and provision the TVM with TVM-specific secrets.
+The TAP carries information that allows the local verifier to authorize the
+TVM's execution on the platform and the local secret broker to provision the
+TVM with TVM-specific secrets.
+
 <<tap_format>> shows the TAP format that consists of five sections: header, lockboxes,
-measurements, attributes, and secrets. The last three sections are confidentiality
-and integrity protected using a symmetric encryption key, in which a symmetric
-key is encrypted inside lockboxes.
+measurements, attributes, and secrets. The last three sections form a TAP body
+that must be at least integrity protected. The secret section must be additionally
+confidentiality protected. These protections must be provided using a
+symmetric encryption where the corresponding symmetric key is encrypted inside
+lockboxes.
 
 [caption="Figure {counter:image}: ", reftext="Figure {image}"]
 [title= "TAP Format in CDDL"]
@@ -967,25 +1002,36 @@ key is encrypted inside lockboxes.
 ----
 tap-header = bytes .size 10                           ; Semantic structure applied externally (non-CBOR)
 
-tap-confidential-sections = {
-   0 => tap-measurements,
-   1 => tap-attributes,
+tap-measurements-encrypt = COSE_Encrypt1            ; The plaintext is defined as tap-measurements
+tap-attributes-encrypt = COSE_Encrypt1              ; The plaintext is defined as tap-attributes
+tap-secrets-encrypt = COSE_Encrypt1                 ; The plaintext is defined as tap-secrets
+
+tap-body-mac = {
+   0 => tap-measurements / tap-measurements-encrypt,
+   1 => tap-attributes / tap-attributes-encrypt,
+   2 => tap-secrets-encrypt
+}
+
+tap-body-encrypt = {
+   0 => tap-measurements
+   1 => tap-attributes
    2 => tap-secrets
 }
 
-tap-confidential-sections-encrypted = COSE_Encrypt1   ; The plaintext is defined as tap-confidential-sections
+tap-body-mac = COSE_Mac0                              ; The plaintext is defined as tap-body-mac
+tap-body-encrypt = COSE_Encrypt1                      ; The plaintext is defined as tap-body-encrypt
 
 tap = (
    tap-header,
    tap-lockboxes,
-   tap-confidential-sections-encrypted
+   tap-body-mac / tap-body-encrypt
 )
 ----
 
 ===== Header
 The header section carries information about the size, version, and encoding
 of the TAP that are used by a parser to interpret the binary representation of
-the TAP. The header must be always 4B aligned, 10 bytes long, and be serialized
+the TAP. The header must be always 4 bytes aligned, 10 bytes long, and be serialized
 in a binary format.
 
 The version field allows future extensions of the TAP format while
@@ -1017,11 +1063,13 @@ Offset | Size | Field
 The lockboxes section supports use of the same TAP across different platforms
 and enables use of different cryptographic primitives. Each lockbox contains
 the TAP symmetric key (TSK) that is encrypted using an identity key of one of
-the target platforms. Only the TSM running on the target platform within the
-expected TCB can access the TSK and thus decrypt the confidential sections.
+the target platforms. Only the local verifier and local secret broker that
+run on the target platform within the expected TCB can access the TSK and thus
+verify the integrity of the TAP body and decrypt the confidential sections.
 
-To construct a TAP, the TVM owner combines the confidential sections into a
-single blob and encrypts it with a freshly generated random symmetric key (TSK).
+To construct a TAP, the TVM owner combines the TAP body's sections into a
+single blob and integrity protects them with a cryptographic tag using a freshly
+generated random symmetric key (TSK).
 He creates then lockboxes for target platforms by encrypting the TSK with the
 target platform's identity key and stores them in form of a list in the
 `lockboxes` section.
@@ -1050,7 +1098,7 @@ integrity matches all defined reference measurements for an algorithm selected
 by the TSM. If the `attributes` section is not empty, then the TSM must
 additionally verify all attributes before releasing a secret.
 
-Typically, the value stored in a measurement register represents the result of
+The value stored in a measurement register should represents the result of
 aggregation of multiple integrity measurements combined using a cryptographic
 hash function. Different standards specify what intermediate integrity
 measurements and in which
@@ -1123,11 +1171,10 @@ on a platform, the TAP format allows the measurements section to be empty.
 
 ===== Attributes
 The attributes section contains a set of rules that define the conditions
-under which a TVM can execute and access the secrets. The TSM implementation
+under which a TVM can execute and access the secrets. The implementation
 might not support all types of attributes. It must not expose secrets to a TVM,
-if any condition fails. If there is an attribute that the TSM does not support,
-then the TSM must consider that the condition defined by the attribut failed
-verification.
+if any condition fails. A presence of an attribute that is not supported causes
+the verification condition to fail.
 
 [caption="Figure {counter:image}: ", reftext="Figure {image}"]
 [title= "TAP Attributes Format in CDDL"]
@@ -1136,7 +1183,7 @@ verification.
 hardware_serial_number = 0               ; Unique number identifying hardware
 firmware_build_time = 1                  ; Firmware build timestamp
 firmware_version = 2                     ; BIOS/UEFI version string
-tcb_svn = 3                              ; TCB's Secure Version Number (SVN)
+tcb_svn = 3                              ; TCB's secure version number (SVN)
 secure_boot_enabled = 4                  ; Boolean (1=true, 0=false)
 platform_debug_enabled = 5               ; Boolean (1=true, 0=false)
 tvm_debug_enabled = 6                    ; Boolean (1=true, 0=false)
