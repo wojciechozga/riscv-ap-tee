@@ -905,11 +905,13 @@ riscv-cove-x509-ext = #6.601(riscv-cove-token) ; Unprotected CBOR Web Token
 
 === Local Attestation
 
-Systems that cannot rely on remote attestation due to unreliable network
-might use local attestation, in which the TSM attests to the integrity of the
-TVM and conditions under which it executes using the rules defined in a TVM
-attestation payload (TAP), a cryptographically protected file created by the
-authorized entity (TVM creator).
+Systems that cannot rely on remote attestation due to unstable or unavailable
+network connectivity may instead use local attestation.
+In this model, the TSM attests to the integrity of a TVM and conditions under
+which it executes using the rules defined in a TVM attestation payload (TAP).
+A TAP is a cryptographically protected file created by an authorized entity,
+such as a TVM creator. A TAP file acts as a source of truth for
+authorization decisions in environments with unreliable network.
 
 [NOTE]
 ====
@@ -920,10 +922,14 @@ continuous access to secrets as part of a licensing model.
 ====
 
 Local attestation introduces two components, a local verifier and a local secret
-broker. The local verifier attests to the TVM's integrity and authorizes the TVM's
-execution. The local secret broker provides a TVM with secrets. Both components
-use a TAP that contains the specification of reference integrity measurements,
-secrets, and conditions under which a TVM can execute and access secrets.
+broker. The local verifier attests to the integrity of a TVM and authorizes its
+execution. The local secret broker provisions secrets to a TVM. Both components
+rely on a TAP as a source of truth for authorizing TVM's actions. In a local
+attestation flow, the TSM interacts with the local verifier to authorize
+TVM execution, supplying a TAP provided by the OS/VMM. To obtain secrets,
+a running TVM first requests evidence (e.g., a signed attestation token)
+from the local verifier, and then presents this evidence to the local secret
+broker to retrieve the corresponding secrets.
 
 [NOTE]
 ====
