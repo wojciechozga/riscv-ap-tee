@@ -1012,19 +1012,12 @@ tap-body-mac = {
    2 => tap-secrets-encrypt
 }
 
-tap-body-encrypt = {
-   0 => tap-measurements
-   1 => tap-attributes
-   2 => tap-secrets
-}
-
 tap-body-mac = COSE_Mac0                              ; The plaintext is defined as tap-body-mac
-tap-body-encrypt = COSE_Encrypt1                      ; The plaintext is defined as tap-body-encrypt
 
 tap = (
    tap-header,
    tap-lockboxes,
-   tap-body-mac / tap-body-encrypt
+   tap-body-mac
 )
 ----
 
