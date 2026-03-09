@@ -972,8 +972,9 @@ A CoVE-enabled platform that supports the TVM authorization must implement the
 local verifier who restrict what TVMs are allowed to run. There must be an
 implementation-specific mechanism to provide the local verifier with a list of
 public keys of those authorized to sign TVM images for execution on the platform.
-The creator of a TVM must sign the TAP associated with the TVM with the
-corresponding private key. During the TVM creation, the TSM requests the local
+The creator of a TVM must sign the TAP associated with the TVM with a private
+key that corresponds to one of the authorized public keys. During the TVM
+creation, the TSM requests the local
 verifier to check if the TVM is authorized to execute based on the signature
 inside the TAP and the list of authorized public keys. If the signature cannot
 be validated, the local verifier must reject authorization of a TVM execution
@@ -1172,8 +1173,8 @@ on a platform, the TAP format allows the measurements section to be empty.
 The attributes section contains a set of rules that define the conditions
 under which a TVM can execute and access the secrets. The implementation
 might not support all types of attributes. It must not expose secrets to a TVM,
-if any condition fails. A presence of an attribute that is not supported causes
-the verification condition to fail.
+if any condition fails. The presence of an attribute that is not supported
+causes the verification condition to fail.
 
 [caption="Figure {counter:image}: ", reftext="Figure {image}"]
 [title= "TAP Attributes Format in CDDL"]
