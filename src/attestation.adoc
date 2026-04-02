@@ -905,40 +905,31 @@ riscv-cove-x509-ext = #6.601(riscv-cove-token) ; Unprotected CBOR Web Token
 
 === Local Attestation
 
-Systems that cannot rely on remote attestation due to unstable or unavailable
+Systems that cannot rely on remote attestation due to unavailable or unstable
 network connectivity may instead use local attestation.
-In this model, the TSM attests to the integrity of a TVM and conditions under
-which it executes using the rules defined in a TVM attestation payload (TAP).
-A TAP is a cryptographically protected file created by an authorized entity,
-such as a TVM creator. A TAP file acts as a source of truth for
-authorization decisions in environments with unreliable network.
+
+In this model, the TSM produces attestation evidence for a TVM. A local
+verifier appraises this evidence using reference measurements and appraisal
+rules encoded in a TVM Attestation Payload (TAP).
+A TAP is a cryptographically protected data container created by an authorized
+entity. It serves as a local source of truth for attestation and authorization
+decisions and may additionally carry TVM-specific secrets.
+Based on the appraisal outcome and the contents of the TAP, a local key broker
+provisions secrets to the TVM.
+
+During the TVM creation, the TSM must interact with the local verifier to
+authorize TVM execution, providing a TAP supplied by the OS/VMM as part of the
+TVM creation request. During the TVM runtime, the TVM presents an attestation
+results (e.g., a signed attestation token) to the local secret broker to
+retrieve the corresponding secrets.
 
 [NOTE]
 ====
-The TAP can be provided to the TSM at the time of the TVM creation or runtime.
-In the former case, the TSM can enforce that a TVM is allowed to execute and
-might provide it with a boot key. In the latter, it can provide the TVM with
-continuous access to secrets as part of a licensing model.
-====
-
-Local attestation introduces two components, a local verifier and a local secret
-broker. The local verifier attests to the integrity of a TVM and authorizes its
-execution. The local secret broker provisions secrets to a TVM. Both components
-rely on a TAP as a source of truth for authorizing TVM's actions. In a local
-attestation flow, the TSM interacts with the local verifier to authorize
-TVM execution, supplying a TAP provided by the OS/VMM. To obtain secrets,
-a running TVM first requests evidence (e.g., a signed attestation token)
-from the local verifier, and then presents this evidence to the local secret
-broker to retrieve the corresponding secrets.
-
-[NOTE]
-====
-The local verifier and secret broker roles are defined as distinct logical
-components to enable a broader range of deployment models and use cases.
-For example, an implementation may realize the secret broker within a TVM,
-a platform RoT, or an external centralized computing node used by many devices.
-In other implementations, a TSM may consolidate both the local verifier and secret
-broker roles within a single component.
+The local verifier and secret broker are defined as distinct logical roles to
+support a broad range of deployment models. For example, an implementation may
+realize the secret broker within a TVM, a platform RoT, or an external
+centralized service shared across multiple devices. Other implementations may
+consolidate the local verifier and secret broker roles within the TSM.
 ====
 
 ==== Properties
@@ -952,6 +943,7 @@ entity run on the platform.
 . Policy-enforced Access to Secrets: The system enforces that a secret is accessed
 only when a TVM and platform are in the expected state.
 
+===== TVM–Platform Binding
 A CoVE-enabled platform that supports the TVM-platform binding must consist of a
 mechanism to identify the platform, for example via cryptographic keys exposed
 by an implementation-specific mechanism, such as a hardware RoT with
@@ -968,6 +960,8 @@ a TVM execution based on the conditions specified in a TAP. A TVM, which is
 executing, should be then able to retrieve from the local secret broker secrets
 encoded in the TAP using an implementation-specific interface.
 
+===== TVM Authorization
+
 A CoVE-enabled platform that supports the TVM authorization must implement the
 local verifier who restrict what TVMs are allowed to run. There must be an
 implementation-specific mechanism to provide the local verifier with a list of
@@ -979,6 +973,8 @@ verifier to check if the TVM is authorized to execute based on the signature
 inside the TAP and the list of authorized public keys. If the signature cannot
 be validated, the local verifier must reject authorization of a TVM execution
 and the TSM must reject its creation.
+
+===== Policy-enforced Access to Secrets
 
 A CoVE-enabled platform that supports policy-enforced access to secrets must
 implement a secret broker that exposes an implementation-specific secret
@@ -1007,19 +1003,19 @@ lockboxes.
 [title= "TAP Format in CDDL"]
 [source,cddl]
 ----
-tap-header = bytes .size 10                           ; Semantic structure applied externally (non-CBOR)
+tap-header = bytes .size 6                          ; Semantic structure applied externally (non-CBOR)
 
 tap-measurements-encrypt = COSE_Encrypt1            ; The plaintext is defined as tap-measurements
 tap-attributes-encrypt = COSE_Encrypt1              ; The plaintext is defined as tap-attributes
 tap-secrets-encrypt = COSE_Encrypt1                 ; The plaintext is defined as tap-secrets
 
-tap-body-mac = {
+tap-body = {
    0 => tap-measurements / tap-measurements-encrypt,
    1 => tap-attributes / tap-attributes-encrypt,
    2 => tap-secrets-encrypt
 }
 
-tap-body-mac = COSE_Mac0                              ; The plaintext is defined as tap-body-mac
+tap-body-mac = COSE_Mac0                            ; The plaintext is defined as tap-body
 
 tap = (
    tap-header,
@@ -1029,15 +1025,27 @@ tap = (
 ----
 
 ===== Header
-The header section carries information about the size, version, and encoding
-of the TAP that are used by a parser to interpret the binary representation of
-the TAP. The header must be always 4 bytes aligned, 10 bytes long, and be serialized
-in a binary format.
+To support constrained environments, the TAP shall include a 4 bytes aligned,
+6 bytes long header that precedes the CBOR-encoded payload.
+The header section carries information about the size, version, and encoding of
+the TAP that should be used by a parser to interpret the binary representation
+of the TAP.
 
-The version field allows future extensions of the TAP format while
-preserving backward compatibility. The `encoding` field enables use of
-implementation-specific encoding format, for example binary, concise binary object
-representation (CBOR), or JavaScript object notation (JSON).
+[NOTE]
+====
+Including the TAP size in the fixed binary prelude simplifies implementation in
+embedded and constrained environments. In such systems, firmware can determine
+the total size of the TAP payload without inspecting the payload itself,
+which in some encodings like CBOR does not guarantee fixed‑width integer
+representations. This design avoids partial CBOR parsing prior to buffer
+allocation and reduces exposure to malformed‑length and resource‑exhaustion
+attacks.
+====
+
+The version field allows future extensions of the TAP format while preserving
+backward compatibility. The `encoding` field enables use of
+implementation-specific encoding format, for example binary, concise binary
+object representation (CBOR), or JavaScript object notation (JSON).
 
 [caption="Figure {counter:image}: ", reftext="Figure {image}"]
 [title= "TAP Header Format (binary)"]
@@ -1053,10 +1061,9 @@ encoding = 0                         ; Binary format
 
 Offset | Size | Field
 -------+-------+---------------------
-0      | 4     | magic constant (ACE0ACE0)
-4      | 4     | size (uint32 little-endian)
-8      | 1     | version (0–255)
-9      | 1     | encoding (0–255)
+0      | 4     | size (uint32 little-endian)
+4      | 1     | version (0–255)
+5      | 1     | encoding (0–255)
 ----
 
 ===== Lockboxes
@@ -1181,23 +1188,23 @@ causes the verification condition to fail.
 [source,cddl]
 ----
 hardware_serial_number = 0               ; Unique number identifying hardware
-firmware_build_time = 1                  ; Firmware build timestamp
-firmware_version = 2                     ; BIOS/UEFI version string
-tcb_svn = 3                              ; TCB's secure version number (SVN)
-secure_boot_enabled = 4                  ; Boolean (1=true, 0=false)
-platform_debug_enabled = 5               ; Boolean (1=true, 0=false)
-tvm_debug_enabled = 6                    ; Boolean (1=true, 0=false)
-max_allowed_uptime = 7                   ; Maximum platform uptime in seconds
+tcb_svn = 1                              ; TCB's secure version number (SVN)
+secure_boot_enabled = 2                  ; Boolean (1=true, 0=false)
+platform_debug_enabled = 3               ; Boolean (1=true, 0=false)
+tvm_debug_enabled = 4                    ; Boolean (1=true, 0=false)
+max_system_uptime = 5                    ; Maximum system uptime in seconds
+firmware_build_time = 6                  ; Firmware build timestamp
+firmware_version = 7                     ; Firmware version
 license_expiration = 8                   ; License expiration timestamp
 
 tap-attribute-key = hardware_serial_number
-                  / firmware_build_time
-                  / firmware_version
                   / tcb_svn
                   / secure_boot_enabled
                   / platform_debug_enabled
                   / tvm_debug_enabled
-                  / max_allowed_uptime
+                  / max_system_uptime
+                  / firmware_build_time
+                  / firmware_version
                   / license_expiration
                   / int .ge 9 .le 65535  ; Reserved range
 
@@ -1224,19 +1231,16 @@ tap-attributes = {
 
 ===== Secrets
 The secrets section is a key value pair, where a key is used to retrieve a value
-and a value is a secret, for example, a cryptographic key or an SSH key.
-The keys for the key value pairs must be unique.
-The TVM can retrieve secrets from the TSM using the `sbi_covg_retrieve_secret()`
-ABI.
+and a value is a secret. The keys for the key value pairs must be unique.
 
 [NOTE]
 ====
 A common deployment pattern is to protect the confidentiality of the TVM image
-at rest by encrypting the VM's disk with a key that the TVM obtains during boot
-following successful attestation. In such a case, the TAP would contain a
-disk encryption secret that the TVM firmware could retrieve from TSM.
-
+at rest by encrypting the VM's disk with a secret key that the TVM obtains
+during boot following successful attestation. In such a case, the TAP would
+contain a disk encryption secret that the TVM firmware could retrieve from TSM.
 ====
+
 [caption="Figure {counter:image}: ", reftext="Figure {image}"]
 [title= "TAP Secrets Format in CDDL"]
 [source,cddl]
