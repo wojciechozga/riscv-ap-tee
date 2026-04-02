@@ -917,10 +917,10 @@ decisions and may additionally carry TVM-specific secrets.
 Based on the appraisal outcome and the contents of the TAP, a local key broker
 provisions secrets to the TVM.
 
-During the TVM creation, the TSM must interact with the local verifier to
+During the TVM creation, the TSM should interact with the local verifier to
 authorize TVM execution, providing a TAP supplied by the OS/VMM as part of the
-TVM creation request. During the TVM runtime, the TVM presents an attestation
-results (e.g., a signed attestation token) to the local secret broker to
+TVM creation request. During the TVM runtime, the TVM may present an attestation
+result (e.g., a signed attestation token) to the local secret broker to
 retrieve the corresponding secrets.
 
 [NOTE]
