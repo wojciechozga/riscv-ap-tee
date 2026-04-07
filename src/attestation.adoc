@@ -920,8 +920,8 @@ provisions secrets to the TVM.
 During the TVM creation, the TSM should interact with the local verifier to
 authorize TVM execution, providing a TAP supplied by the OS/VMM as part of the
 TVM creation request. During the TVM runtime, the TVM may present an attestation
-result (e.g., a signed attestation token) to the local secret broker to
-retrieve the corresponding secrets.
+result (e.g., an attestation token signed by a verifier) to the local secret
+broker to retrieve the corresponding secrets.
 
 [NOTE]
 ====
@@ -938,12 +938,13 @@ Local attestation utilizes one or more of the following properties:
 
 . TVM–Platform Binding: The system verifies that a TVM is authorized to run on
 the platform.
-. TVM Authorization: The system enforces that only TVMs created by a trusted
-entity run on the platform.
+. TVM Provenance: The system enforces that only TVMs originating from trusted
+entities run on the platform.
 . Policy-enforced Access to Secrets: The system enforces that a secret is accessed
 only when a TVM and platform are in the expected state.
 
 ===== TVM–Platform Binding
+
 A CoVE-enabled platform that supports the TVM-platform binding must consist of a
 mechanism to identify the platform, for example via cryptographic keys exposed
 by an implementation-specific mechanism, such as a hardware RoT with
@@ -952,17 +953,16 @@ The creator of a TVM must then be able to link the identity key with the
 hardware and use it to encode the TAP.
 Only the local verifier and local secret broker running on that platform must
 have access to the key that permits them to decode the TAP.
-Access to such key should be linked to the integrity of all TCB elements, such
-as the TSM and other M-mode firmware.
+Access to such key should be linked to the integrity of all TCB elements.
 
 During the TVM creation, the TSM should request the local verifier to authorize
 a TVM execution based on the conditions specified in a TAP. A TVM, which is
 executing, should be then able to retrieve from the local secret broker secrets
 encoded in the TAP using an implementation-specific interface.
 
-===== TVM Authorization
+===== TVM Provenance
 
-A CoVE-enabled platform that supports the TVM authorization must implement the
+A CoVE-enabled platform that supports the TVM provenance must implement the
 local verifier who restrict what TVMs are allowed to run. There must be an
 implementation-specific mechanism to provide the local verifier with a list of
 public keys of those authorized to sign TVM images for execution on the platform.
@@ -988,8 +988,8 @@ all conditions defined in TAP.
 image::tap_format.png[align=center]
 
 ==== TVM Attestation Payload (TAP)
-The TAP carries information that allows the local verifier to authorize the
-TVM's execution on the platform and the local secret broker to provision the
+The TAP carries information that allows the local verifier to authorize a
+TVM's execution on the platform and the local secret broker to provision a
 TVM with TVM-specific secrets.
 
 <<tap_format>> shows the TAP format that consists of five sections: header, lockboxes,
@@ -1026,7 +1026,7 @@ tap = (
 
 ===== Header
 To support constrained environments, the TAP shall include a 4 bytes aligned,
-6 bytes long header that precedes the CBOR-encoded payload.
+6 bytes long header that precedes the payload.
 The header section carries information about the size, version, and encoding of
 the TAP that should be used by a parser to interpret the binary representation
 of the TAP.
@@ -1037,7 +1037,7 @@ Including the TAP size in the fixed binary prelude simplifies implementation in
 embedded and constrained environments. In such systems, firmware can determine
 the total size of the TAP payload without inspecting the payload itself,
 which in some encodings like CBOR does not guarantee fixed‑width integer
-representations. This design avoids partial CBOR parsing prior to buffer
+representations. This design avoids partial TAP parsing prior to buffer
 allocation and reduces exposure to malformed‑length and resource‑exhaustion
 attacks.
 ====
@@ -1061,9 +1061,9 @@ encoding = 0                         ; Binary format
 
 Offset | Size | Field
 -------+-------+---------------------
-0      | 4     | size (uint32 little-endian)
-4      | 1     | version (0–255)
-5      | 1     | encoding (0–255)
+0      | 4     | Size (uint32 little-endian)
+4      | 1     | Version (0–255)
+5      | 1     | Encoding (0–255)
 ----
 
 ===== Lockboxes
@@ -1076,7 +1076,7 @@ verify the integrity of the TAP body and decrypt the confidential sections.
 
 To construct a TAP, the TVM owner combines the TAP body's sections into a
 single blob and integrity protects them with a cryptographic tag using a freshly
-generated random symmetric key (TSK).
+generated random symmetric key, called the TSK.
 He creates then lockboxes for target platforms by encrypting the TSK with the
 target platform's identity key and stores them in form of a list in the
 `lockboxes` section.
@@ -1142,8 +1142,8 @@ tap-measurement-id = (
 )
 
 tap-measurement-layer = (
-   0         /                            ; virtualized (TVM)
-   1         /                            ; non-virtualized (OS/VMM)
+   0         /                            ; Virtualized (TVM)
+   1         /                            ; Non-virtualized (OS/VMM)
    (2..255)                               ; Reserved to support nested virtualization
 )
 
@@ -1235,10 +1235,10 @@ and a value is a secret. The keys for the key value pairs must be unique.
 
 [NOTE]
 ====
-A common deployment pattern is to protect the confidentiality of the TVM image
-at rest by encrypting the VM's disk with a secret key that the TVM obtains
+A common deployment pattern is to protect the confidentiality of a TVM image
+at rest by encrypting a TVM's disk with a secret key that a TVM obtains
 during boot following successful attestation. In such a case, the TAP would
-contain a disk encryption secret that the TVM firmware could retrieve from TSM.
+contain a disk encryption secret that a TVM firmware could retrieve from the TSM.
 ====
 
 [caption="Figure {counter:image}: ", reftext="Figure {image}"]
