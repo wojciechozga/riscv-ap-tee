@@ -982,17 +982,12 @@ retrieval interface to TVMs. The secret broker must authorize every access to a
 secret and checks that it is granted only when the platform and the TVM satisfy
 all conditions defined in TAP.
 
-[id=tap_format]
-[caption="Figure {counter:image}"]
-[title= ": Format of the TVM Attestation Payload (TAP)"]
-image::tap_format.png[align=center]
-
 ==== TVM Attestation Payload (TAP)
 The TAP carries information that allows the local verifier to authorize a
 TVM's execution on the platform and the local secret broker to provision a
 TVM with TVM-specific secrets.
 
-<<tap_format>> shows the TAP format that consists of five sections: header, lockboxes,
+The TAP format that consists of five sections: header, lockboxes,
 measurements, attributes, and secrets. The last three sections form a TAP body
 that must be at least integrity protected. The secret section must be additionally
 confidentiality protected. These protections must be provided using a
@@ -1086,7 +1081,7 @@ target platform's identity key and stores them in form of a list in the
 [source,cddl]
 ----
 tap-lockbox-name = bstr
-tap-lockbox-value = COSE_Sign1
+tap-lockbox-value = COSE_Encrypt1
 
 tap-lockbox = {
    0 => tap-lockbox-name                  ; Platform identifier, e.g., fingerprint
