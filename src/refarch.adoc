@@ -513,7 +513,7 @@ requirements/invariants for enforcement of the memory
 access-control for memory assigned to the TVMs is described in
 <<TVM memory management>>.
 
-=== TVM Execution
+=== TVM Memory Access
 
 As described above, TVMs can access both classes of memory: (1) confidential
 memory
@@ -526,7 +526,7 @@ confidential memory is using memory encryption (instead or in addition), the
 encryption keys used for confidential memory must be different from
 non-confidential memory.
 
-All TVM memory is mapped in the second-stage page tables controlled by the
+All TVM memory is mapped in the G-stage page tables controlled by the
 TSM explicitly. CoVE implementations that support dynamic conversions between
 confidential
 and non-confidential memory might delegate the allocation of memory for the
@@ -537,7 +537,7 @@ By default any memory mapped to a TVM is confidential. A TVM may then
 explicitly request that
 confidential memory be converted to non-confidential memory regions using
 services provided by the TSM. More
-information about TVM Execution and the lifecycle of a TVM is described in
+information about TVM execution and the lifecycle of a TVM is described in
 the <<TVM Lifecycle>> section of this document.
 
 === Debug and Performance Monitoring
