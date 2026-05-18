@@ -62,7 +62,9 @@ to hold TVM data and are referenced by the hgatp leaf page table entries. For
 pages added to the TVM, the VMM must invoke `sbi_covh_add_tvm_measured_pages()`
 which extends the initial measurement hash of the TVM. The hash will be used by
 the TSM to generate the attestation report (evidence) when requested by a
-challenger (relying party). Note that if the measurement steps are executed by
+challenger (relying party).
+The VMM must follow ascending order when adding measured pages to a TVM.
+Note that if the measurement steps are executed by
 the VMM in an incorrect order the final measurements will be different and
 flagged during attestation. In the initial set of measured TVM pages, the VMM
 would typically provide the guest firmware, boot loader and boot kernel as well
