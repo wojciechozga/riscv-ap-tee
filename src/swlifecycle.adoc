@@ -6,7 +6,7 @@
 This section describes the TEEI operations for the lifecycle of a TVM
 including the OS/VMM interactions with the TSM.
 
-=== TVM build and initialization
+=== TVM Creation
 
 The host OS/VMM should be capable of hosting many TVMs on a CoVE-capable
 platform (limited only by the practical limits of the number of CPUs and
