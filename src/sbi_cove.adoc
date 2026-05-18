@@ -448,14 +448,14 @@ remove the confidential pages.
 This requires the host to make three separate ECALLs to the TSM:
 
 . `sbi_covh_tvm_invalidate_pages()`
-. `tee_host_tvm_initiate_fence()`
+. `sbi_covh_tvm_fence()`
 . `sbi_covh_tvm_remove_pages()`
 
 Upon completion of the invalidation of references to confidential memory, the
 host may reclaim the confidential pages that were previously mapped in the
-region using `tee_host_tsm_reclaim_pages()`. The host must then continue the
+region using `sbi_covh_reclaim_pages()`. The host must then continue the
 TVM execution and insert shared pages into the region using
-`tee_host_tvm_add_shared_pages()` on the page-fault when TVM tries to access
+`sbi_covh_add_tvm_shared_pages()` on the page-fault when TVM tries to access
 the region. If the region of address space is unpopulated, the page removal
 ECALLs are not needed and the host can insert shared pages into the region on
 the next page-fault.
