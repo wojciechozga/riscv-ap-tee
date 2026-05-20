@@ -50,26 +50,26 @@ When a TVM context is created and initialized by using the
 `sbi_covh_create_tvm()` function - this global init function allocates a
 set of pages for the TVM global control structure and resets the control
 fields that are immutable for the lifetime of the TVM, e.g., configuration of
-which RISC-V CPU extensions the TVM is allowed to use, debug and performance
-monitoring capabilities enabled etc.
+which RISC-V CPU extensions the TVM is allowed to use, enabled debug and
+performance monitoring capabilities.
 
 The VMM may assign memory to the TVM via a sequence of
 `sbi_covh_add_tvm_page_table_pages()` `sbi_covh_add_tvm_measured_pages()` and
-`sbi_covh_add_tvm_zero_pages()` - the former grants memory pages that are to
-contain second-stage paging structures entries that translate a TVM guest
-physical address to the system physical address, while the latter two are used
+`sbi_covh_add_tvm_zero_pages()`. The former grants memory pages that are to
+contain G-stage paging structures entries that translate a TVM guest
+physical address to the host physical address, while the latter two are used
 to hold TVM data and are referenced by the hgatp leaf page table entries. For
 pages added to the TVM, the VMM must invoke `sbi_covh_add_tvm_measured_pages()`
 which extends the initial measurement hash of the TVM. The hash will be used by
 the TSM to generate the attestation report (evidence) when requested by a
 challenger (relying party).
-The VMM must follow ascending order when adding measured pages to a TVM.
+The VMM must add pages to a TVM in ascending guest physical order.
 Note that if the measurement steps are executed by
 the VMM in an incorrect order the final measurements will be different and
 flagged during attestation. In the initial set of measured TVM pages, the VMM
 would typically provide the guest firmware, boot loader and boot kernel as well
 as memory needed for the boot stack, heap and memory tracking structures. During
-`sbi_covh_add_tvm_measured_pages()` & `sbi_covh_add_tvm_zero_pages()`, the
+`sbi_covh_add_tvm_measured_pages()` and `sbi_covh_add_tvm_zero_pages()`, the
 memory granted is tracked by the TSM to ensure that pages assigned to a TVM may
 not be assigned to a non-confidential VM or another TVM. The pages may be lazily
 added to the TVM subsequent to the TVM execution using the
