@@ -134,9 +134,9 @@ property of the MPT and are discussed next:
 
 ==== Address Translation/Page Walk
 Figure 2 describes a reference model for memory protection table lookup where
-the physical address derived from the two-stage address translation and
+the host physical address derived from the two-stage address translation and
 protection mechanism is looked up via the MPT configured for the active
-supervisor domain to get the access permissions for the physical address. This
+supervisor domain to get the access permissions for the host physical address. This
 lookup should be performed for each implicit and explicit memory access and per
 the paging sizes/modes supported by the hart.
 
