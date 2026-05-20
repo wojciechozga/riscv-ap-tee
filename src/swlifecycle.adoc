@@ -63,13 +63,13 @@ pages added to the TVM, the VMM must invoke `sbi_covh_add_tvm_measured_pages()`
 which extends the initial measurement hash of the TVM. The hash will be used by
 the TSM to generate the attestation report (evidence) when requested by a
 challenger (relying party).
-The VMM must follow ascending order when adding measured pages to a TVM.
+The VMM must add pages to a TVM in ascending guest physical order.
 Note that if the measurement steps are executed by
 the VMM in an incorrect order the final measurements will be different and
 flagged during attestation. In the initial set of measured TVM pages, the VMM
 would typically provide the guest firmware, boot loader and boot kernel as well
 as memory needed for the boot stack, heap and memory tracking structures. During
-`sbi_covh_add_tvm_measured_pages()` & `sbi_covh_add_tvm_zero_pages()`, the
+`sbi_covh_add_tvm_measured_pages()` and `sbi_covh_add_tvm_zero_pages()`, the
 memory granted is tracked by the TSM to ensure that pages assigned to a TVM may
 not be assigned to a non-confidential VM or another TVM. The pages may be lazily
 added to the TVM subsequent to the TVM execution using the

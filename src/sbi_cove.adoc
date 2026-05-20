@@ -1301,7 +1301,7 @@ mapping. The GPA of the page mapped is part of the measurement operation.
 The measurement process is a state machine that must be faithfully reproduced
 by the VMM otherwise, the attestation evidence verification by the relying party
 will fail and the TVM will not be considered trustworthy by the relying party.
-The caller must follow ascending order when adding measured pages to a TVM.
+The caller must add pages to a TVM in ascending guest physical order.
 
 The possible error codes returned in `sbiret.error` are shown below.
 
@@ -2589,7 +2589,7 @@ faithfully reproduce the state machine for the measurement process otherwise
 the attestation
 evidence verification by the relying party will fail and the TVM will not be
 considered trustworthy.
-The caller must follow ascending order when adding measured pages to a TVM.
+The caller must add pages to a TVM in ascending guest physical order.
 
 | <<sbi_covh_add_tvm_zero_pages, sbi_covh_add_tvm_zero_pages>> | Add a
 zero page for an existing mapping for a TVM page (post initialization).
